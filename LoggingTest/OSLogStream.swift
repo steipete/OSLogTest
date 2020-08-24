@@ -53,6 +53,7 @@ class OSLogStream {
         var osLogMessage = entry.log_message
         guard let messageTextC = OSLogCopyFormattedMessage(&osLogMessage) else { return false }
         let message = String(utf8String: messageTextC)
+        free(messageTextC)
         let date = Date(timeIntervalSince1970: TimeInterval(osLogMessage.tv_gmt.tv_sec))
         let logMessage = LogMessage(msg: message ?? "", date: date)
         DispatchQueue.main.async { self.logHandler(logMessage) }
