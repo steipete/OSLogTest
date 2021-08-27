@@ -12,16 +12,9 @@ import Combine
 let subsystem = "com.steipete.LoggingTest"
 
 func getLogEntries() throws -> [OSLogEntryLog] {
-    // FB8269189: OSLogStore does not work iOS.
     let logStore = try OSLogStore(scope: .currentProcessIdentifier)
     let oneHourAgo = logStore.position(date: Date().addingTimeInterval(-3600))
-
-    #if os(macOS)
-        let allEntries = try logStore.getEntries(at: oneHourAgo)
-    #else
-        // FB8518476: The Swift shims for for the entries enumerator are missing.
-        let allEntries = try Array(logStore.__entriesEnumerator(position: oneHourAgo, predicate: nil))
-    #endif
+    let allEntries = try logStore.getEntries(at: oneHourAgo)
 
     // FB8518539: Using NSPredicate to filter the subsystem doesn't seem to work.
     return allEntries
@@ -31,7 +24,7 @@ func getLogEntries() throws -> [OSLogEntryLog] {
 
 func printLogEntries() -> Future<[OSLogEntryLog], Error> {
     return Future { promise in
-        DispatchQueue.global(qos: .utility).async {
+        DispatchQueue.global(qos: .default).async {
             do {
                 let logEntries = try getLogEntries()
                 DispatchQueue.main.async {
@@ -46,35 +39,6 @@ func printLogEntries() -> Future<[OSLogEntryLog], Error> {
     }
 }
 
-func printOSLog() {
-    let lookback = Date().addingTimeInterval(-36000) // one hour ago
-    //let searchPredicate = NSPredicate(format: "(subsystem contains %@) AND (date > %@)", subsystem, lookback as NSDate)
-    let searchPredicate = NSPredicate(format: "(subsystem contains %@)", subsystem)
-
-    do {
-        let logStore = try OSLogStore(scope: .currentProcessIdentifier)
-        //let logPosition = logStore.position(timeIntervalSinceEnd: 0.0)
-        let oneHourAgo = logStore.position(date: lookback)
-        let enumerator = try logStore.__entriesEnumerator(position: oneHourAgo, predicate: searchPredicate)
-        var next: Any?
-        repeat {
-            next = enumerator.nextObject()
-            //dump(next)
-
-            guard let entry = next as? OSLogEntryLog else { return }
-            print("Timestamp \(entry.date), sender: \(entry.sender), contents: \(entry.composedMessage)")
-
-
-        } while next != nil
-
-        //let result = try store.getEntries(with: .reverse, at: logPosition, matching: searchPredicate)
-        //        result.forEach {
-        //        }
-    } catch {
-        print("Error: \(error)")
-    }
-}
-
 var logStream: OSLogStream?
 
 func setupFlexHandler() {
@@ -84,7 +48,6 @@ func setupFlexHandler() {
         print("Log Handler: \(msg)")
     }
 }
-
 
 var subscriber: AnyCancellable?
 
@@ -115,7 +78,7 @@ struct ContentView: View {
         updateLog()
 
         return VStack {
-            Text("This is a sample project to test the new logging features of iOS 14.")
+            Text("This is a sample project to test the new logging features of iOS 1̶4̶ 15.")
                 .padding()
 
             Picker(selection: $selectedLogLevel, label: Text("Choose Log Level")) {
@@ -143,9 +106,7 @@ struct ContentView: View {
                 Text("Log with Log Level \(logLevels[selectedLogLevel])")
             }.padding()
 
-            Button(action: {
-                updateLog()
-            }) {
+            Button(action: updateLog) {
                 Text("Collect Log Messages")
             }
 
